@@ -1,5 +1,9 @@
 <?php
 require 'db.php';
+require 'validator.php';
+
+$error = '';
+$test = '';
 
 // Обработка отправки формы
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -9,21 +13,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status_id = $_POST['status_id'];
     $employees = $_POST['employees'] ?? []; // Массив ID выбранных сотрудников
 
-    // 1. Вставляем проект
-    $stmt = $pdo->prepare("INSERT INTO projects (name, organization_id, price, status_id) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$name, $organization_id, $price, $status_id]);
-    $project_id = $pdo->lastInsertId();
+    $row = [
+        'name' => $name,
+        'organization_id' => $organization_id,
+        'price' => $price,
+        'status_id' => $status_id
+    ];
+    if (!isRowUnique(targetRow: $row, pdo: $pdo)) {
+        $error = 'Ошибка! Такая запись уже существует!';
+    } else {
+        // 1. Вставляем проект
+        $stmt = $pdo->prepare("INSERT INTO projects (name, organization_id, price, status_id) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $organization_id, $price, $status_id]);
+        $project_id = $pdo->lastInsertId();
 
-    // 2. Связываем с сотрудниками в проекты_сотрудники
-    if (!empty($employees)) {
-        $stmtLink = $pdo->prepare("INSERT INTO projects_employees (project_id, employee_id) VALUES (?, ?)");
-        foreach ($employees as $emp_id) {
-            $stmtLink->execute([$project_id, $emp_id]);
+        // 2. Связываем с сотрудниками в проекты_сотрудники
+        if (!empty($employees)) {
+            $stmtLink = $pdo->prepare("INSERT INTO projects_employees (project_id, employee_id) VALUES (?, ?)");
+            foreach ($employees as $emp_id) {
+                $stmtLink->execute([$project_id, $emp_id]);
+            }
         }
-    }
 
-    header("Location: index.php");
-    exit;
+        header("Location: index.php");
+        exit;
+
+    }
 }
 
 // Получаем данные для выпадающих списков
@@ -42,12 +57,15 @@ $employees = $pdo->query("SELECT * FROM employees")->fetchAll();
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input, select { width: 100%; padding: 8px; box-sizing: border-box; }
         .btn { padding: 10px 15px; background: #0056b3; color: white; border: none; cursor: pointer; }
-        .checkbox-group { max-height: 100px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; }
         .checkbox-group label { font-weight: normal; display: flex; align-items: center; gap: 5px; }
+        .danger {font-size: 20px; color: red}
     </style>
 </head>
 <body>
 <h1>Новый проект</h1>
+<?php if (!empty($error)): ?>
+<p class="danger"><?=$error?></p>
+<?php endif;?>
 <form method="POST">
     <div class="form-group">
         <label>Название проекта:</label>
