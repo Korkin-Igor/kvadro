@@ -35,7 +35,7 @@ $projects = $stmt->fetchAll();
 </head>
 <body>
 <h1>Текущие проекты МНВП "Квадро"</h1>
-<a href="index.php" class="btn">+ Добавить новый проект</a>
+<a href="add_project.php" class="btn">+ Добавить новый проект</a>
 
 <table>
     <thead>
